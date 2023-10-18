@@ -46,6 +46,8 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
+import sk.iway.upload.UploadProgressListener;
+
 /**
  * <p> This class implements the <code>MultipartRequestHandler</code>
  * interface by providing a wrapper around the Jakarta Commons FileUpload
@@ -54,6 +56,7 @@ import java.util.List;
  * @version $Rev$ $Date$
  * @since Struts 1.1
  */
+//-----------WEBJET CUSTOMIZATION - tracks fileupload progress----------
 public class CommonsMultipartRequestHandler implements MultipartRequestHandler {
     // ----------------------------------------------------- Manifest Constants
 
@@ -183,6 +186,9 @@ public class CommonsMultipartRequestHandler implements MultipartRequestHandler {
         List items = null;
 
         try {
+      	  //-------------WEBJET CUSTOMIZATION----------
+      	  upload.setProgressListener(new UploadProgressListener(request.getSession()));
+      	  //---------END OF WEBJET CUSTOMIZATION-------
             items = upload.parseRequest(request);
         } catch (DiskFileUpload.SizeLimitExceededException e) {
             // Special handling for uploads that are too big.

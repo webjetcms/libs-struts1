@@ -20,7 +20,11 @@
  */
 package org.apache.struts.config;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+
+import sk.iway.iwcm.Constants;
+import sk.iway.iwcm.Tools;
 
 /**
  * <p>A JavaBean representing the configuration information of a
@@ -191,9 +195,38 @@ public class ForwardConfig extends BaseConfig {
         this.name = name;
     }
 
-    public String getPath() {
-        return (this.path);
-    }
+    public String getPath()
+    {
+		if (path != null && path.contains("/components/"))
+		{
+			try
+			{
+				// String root = Constants.getServletContext().getRealPath("/");
+				String customPath = Tools.replace(path, "/components/", "/components/" + Constants.getInstallName() + "/");
+				File custom = new File(Tools.getRealPath(customPath));
+				if (custom.exists())
+				{
+					return customPath;
+				}
+			}
+			catch (Exception e)
+			{
+				System.err.println("Probably not initialized: "+e.getMessage());
+			}
+		}
+
+		String retPath = this.path;
+
+		//JDK 8 + Tomcat 8 nezvladaju url cast v ceste k suboru
+		if (Tools.isNotEmpty(retPath))
+		{
+			//int index = retPath.indexOf("?");
+			//jeeff: toto pokazilo presmerovania v admin casti if (index > 0) retPath = retPath.substring(0, index);
+			//treba fixnut na inom mieste
+		}
+
+		return (retPath);
+     }
 
     public void setPath(String path) {
         if (configured) {
