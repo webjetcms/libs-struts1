@@ -30,6 +30,7 @@ import org.apache.struts.action.ActionMessages;
 import org.apache.struts.action.ActionServlet;
 import org.apache.struts.config.ForwardConfig;
 import org.apache.struts.config.ModuleConfig;
+import org.apache.struts.taglib.bean.WriteTag;
 import org.apache.struts.taglib.html.Constants;
 import org.apache.struts.util.MessageResources;
 import org.apache.struts.util.ModuleUtils;
@@ -49,18 +50,23 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
 import java.net.MalformedURLException;
-
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 
+import sk.iway.iwcm.Tools;
+import sk.iway.iwcm.i18n.Prop;
+
 /**
  * Provides helper methods for JSP tags.
  *
- * @version $Rev$
+ * @version $Rev: 471754 $
  * @since Struts 1.2
  */
+// ---------- CHANGED BECAUSE OF FORMATTED <bean:write />-------------
+//----------- the only thing changed is message() method--------
 public class TagUtils {
     /**
      * The Singleton instance.
@@ -933,7 +939,13 @@ public class TagUtils {
     public String message(PageContext pageContext, String bundle,
         String locale, String key)
         throws JspException {
-        return message(pageContext, bundle, locale, key, null);
+   	 if (key == WriteTag.INT_FORMAT_KEY)
+   		 return "0";
+   	 if (key == WriteTag.FLOAT_FORMAT_KEY)
+   		 return Tools.decimalFormat.toPattern();
+   	 if (Arrays.asList(WriteTag.SQL_DATE_FORMAT_KEY, WriteTag.SQL_TIME_FORMAT_KEY, WriteTag.SQL_TIMESTAMP_FORMAT_KEY).contains(key))
+   		 return sk.iway.iwcm.Constants.getString("dateTimeFormat");
+   	 return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key);
     }
 
     /**
@@ -953,25 +965,15 @@ public class TagUtils {
     public String message(PageContext pageContext, String bundle,
         String locale, String key, Object[] args)
         throws JspException {
-        MessageResources resources =
-            retrieveMessageResources(pageContext, bundle, false);
-
-        Locale userLocale = getUserLocale(pageContext, locale);
-        String message = null;
-
-        if (args == null) {
-            message = resources.getMessage(userLocale, key);
-        } else {
-            message = resources.getMessage(userLocale, key, args);
-        }
-
-        if ((message == null) && log.isDebugEnabled()) {
-            // log missing key to ease debugging
-            log.debug(resources.getMessage("message.resources", key, bundle,
-                    locale));
-        }
-
-        return message;
+   	 if (args.length == 0)
+   		 return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key);
+   	 if (args.length == 1)
+   		 return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key, String.valueOf(args[0]));
+   	 if (args.length == 2)
+   		 return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key, String.valueOf(args[0]), String.valueOf(args[1]));
+   	 if (args.length == 3)
+   		 return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key, String.valueOf(args[0]), String.valueOf(args[1]), String.valueOf(args[2]));
+        return Prop.getInstance(Prop.getLng(pageContext.getSession())).getText(key);
     }
 
     /**

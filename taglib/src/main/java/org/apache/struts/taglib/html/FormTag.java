@@ -47,6 +47,9 @@ import java.io.IOException;
  *
  * @version $Rev$ $Date$
  */
+//---------------WEBJET CHANGES
+//---------------In struts 1.3.2, attributes name and type of FormTag are considered to be an error
+//---------------This class is customized to allow those attributes (too many of them to change manually)
 public class FormTag extends TagSupport {
     /**
      * The line ending string.
@@ -199,11 +202,34 @@ public class FormTag extends TagSupport {
      * The language code of this element.
      */
     private String lang = null;
-    
+
     /**
      * The direction for weak/neutral text of this element.
      */
     private String dir = null;
+
+    //------------------WEBJET CHANGES-------------------
+    protected String name = null;
+    protected String type = null;
+    protected String scope = null;
+
+    public String getName()
+    {
+   	 return name;
+    }
+
+    public void setName(String name)
+    {
+   	 this.name = name;
+    }
+
+    //not used, reguired by tld descriptor
+    public String getType() {return type;}
+    public void setType(String type){this.type = type;}
+    public String getScope() {return scope;}
+    public void setScope(String scope){this.scope = scope;}
+    //------------------END WEBJET CHANGES-------------------
+
 
     // ------------------------------------------------------------- Properties
 
@@ -439,7 +465,7 @@ public class FormTag extends TagSupport {
 
     /**
      * Returns the language code of this element.
-     * 
+     *
      * @since Struts 1.3.6
      */
     public String getLang() {
@@ -448,7 +474,7 @@ public class FormTag extends TagSupport {
 
     /**
      * Sets the language code of this element.
-     * 
+     *
      * @since Struts 1.3.6
      */
     public void setLang(String lang) {
@@ -457,7 +483,7 @@ public class FormTag extends TagSupport {
 
     /**
      * Returns the direction for weak/neutral text this element.
-     * 
+     *
      * @since Struts 1.3.6
      */
     public String getDir() {
@@ -466,7 +492,7 @@ public class FormTag extends TagSupport {
 
     /**
      * Sets the direction for weak/neutral text of this element.
-     * 
+     *
      * @since Struts 1.3.6
      */
     public void setDir(String dir) {
@@ -515,11 +541,22 @@ public class FormTag extends TagSupport {
         throws JspException {
         int scope = PageContext.SESSION_SCOPE;
 
-        if ("request".equalsIgnoreCase(beanScope)) {
+        if ("request".equalsIgnoreCase(beanScope) || "request".equalsIgnoreCase(this.scope)) {
             scope = PageContext.REQUEST_SCOPE;
         }
 
-        Object bean = pageContext.getAttribute(beanName, scope);
+        Object bean = null;
+        if (name != null)
+      	  bean = pageContext.findAttribute(name);
+        if (bean == null){
+        	try{
+     			bean = Class.forName(type).getDeclaredConstructor().newInstance();
+     		}catch (Exception e) {
+			}
+        }
+
+        if (bean == null)
+      	  bean = pageContext.getAttribute(beanName, scope);
 
         if (bean == null) {
             // New and improved - use the values from the action mapping
@@ -532,13 +569,13 @@ public class FormTag extends TagSupport {
                     (HttpServletRequest) pageContext.getRequest());
             }
 
-            if (bean == null) {
-                throw new JspException(messages.getMessage("formTag.create",
-                        beanType, beanName));
+            if (bean == null){
+            	throw new JspException(messages.getMessage("formTag.create", beanType, beanName));
             }
 
-            pageContext.setAttribute(beanName, bean, scope);
         }
+        if (name != null)
+      	  pageContext.setAttribute(name, bean, scope);
 
         pageContext.setAttribute(Constants.BEAN_KEY, bean,
             PageContext.REQUEST_SCOPE);
@@ -587,6 +624,7 @@ public class FormTag extends TagSupport {
      */
     protected void renderName(StringBuffer results)
         throws JspException {
+   	 /*
         if (this.isXhtml()) {
             if (getStyleId() == null) {
                 renderAttribute(results, "id", beanName);
@@ -594,9 +632,17 @@ public class FormTag extends TagSupport {
                 throw new JspException(messages.getMessage("formTag.ignoredId"));
             }
         } else {
-            renderAttribute(results, "name", beanName);
-            renderAttribute(results, "id", getStyleId());
-        }
+        */
+      	  //-----------WEBJET CHANGES------------
+      	  if (name != null)
+      		  renderAttribute(results, "name", name);
+      	  else
+      		  renderAttribute(results, "name", beanName);
+
+      	  if (getStyleId() != null) renderAttribute(results, "id", getStyleId());
+      	  //-----------END WEBJET CHANGES------------
+
+        //}
     }
 
     /**
@@ -604,13 +650,13 @@ public class FormTag extends TagSupport {
      */
     protected void renderAction(StringBuffer results) {
         String calcAction = (this.action == null ? postbackAction : this.action);
-        HttpServletResponse response =
-            (HttpServletResponse) this.pageContext.getResponse();
+        //HttpServletResponse response =
+        //    (HttpServletResponse) this.pageContext.getResponse();
 
         results.append(" action=\"");
-        results.append(response.encodeURL(
-                TagUtils.getInstance().getActionMappingURL(calcAction,
-                    this.pageContext)));
+        //webjet - zrusene encodeURL aby sa nepridaval sessionid identifikator
+        results.append(TagUtils.getInstance().getActionMappingURL(calcAction,
+                    this.pageContext));
 
         results.append("\"");
     }
@@ -630,29 +676,47 @@ public class FormTag extends TagSupport {
      * @since Struts 1.1
      */
     protected String renderToken() {
-        StringBuffer results = new StringBuffer();
+
         HttpSession session = pageContext.getSession();
 
+        return renderToken(session);
+    }
+
+    public static String renderToken(HttpSession session)
+    {
+        StringBuffer results = new StringBuffer();
         if (session != null) {
             String token =
-                (String) session.getAttribute(Globals.TRANSACTION_TOKEN_KEY);
+            (String) session.getAttribute(Globals.TRANSACTION_TOKEN_KEY);
 
             if (token != null) {
-                results.append("<div><input type=\"hidden\" name=\"");
+                results.append("<div style=\"display: none;\"><input type=\"hidden\" name=\"");
                 results.append(Constants.TOKEN_KEY);
                 results.append("\" value=\"");
                 results.append(token);
 
-                if (this.isXhtml()) {
-                    results.append("\" />");
-                } else {
-                    results.append("\">");
-                }
+                results.append("\" />");
 
                 results.append("</div>");
             }
         }
 
+        return results.toString();
+    }
+
+    public static String renderTokenAsParam(HttpSession session)
+    {
+        StringBuffer results = new StringBuffer();
+        if (session != null) {
+            String token =
+            (String) session.getAttribute(Globals.TRANSACTION_TOKEN_KEY);
+
+            if (token != null) {
+                results.append(Constants.TOKEN_KEY);
+                results.append("=");
+                results.append(token);
+            }
+        }
         return results.toString();
     }
 
@@ -738,7 +802,7 @@ public class FormTag extends TagSupport {
             sb.append("]");
             index = sb.toString();
         }
-        
+
         // Construct the control name that will receive focus.
         StringBuffer focusControl = new StringBuffer("document.forms[\"");
         focusControl.append(beanName);
@@ -858,6 +922,8 @@ public class FormTag extends TagSupport {
 
         mapping = (ActionMapping) moduleConfig.findActionConfig(mappingName);
 
+        //WebJET - zakomentovane, aby sme mohli mat mapovanie nastavene ako potrebujeme na URL stranky
+        /*
         if (mapping == null) {
             JspException e =
                 new JspException(messages.getMessage("formTag.mapping",
@@ -867,13 +933,18 @@ public class FormTag extends TagSupport {
                 PageContext.REQUEST_SCOPE);
             throw e;
         }
+        */
 
         // Look up the form bean definition
-        FormBeanConfig formBeanConfig =
-            moduleConfig.findFormBeanConfig(mapping.getName());
+        FormBeanConfig formBeanConfig = null;
+        if (mapping!=null) formBeanConfig = moduleConfig.findFormBeanConfig(mapping.getName());
 
         if (formBeanConfig == null) {
-            JspException e = null;
+      	  beanName = name;
+      	  beanScope = scope;
+      	  beanType = type;
+      	  return;
+           /* JspException e = null;
 
             if (mapping.getName() == null) {
                 e = new JspException(messages.getMessage("formTag.name", calcAction));
@@ -884,7 +955,7 @@ public class FormTag extends TagSupport {
 
             pageContext.setAttribute(Globals.EXCEPTION_KEY, e,
                 PageContext.REQUEST_SCOPE);
-            throw e;
+            throw e;*/
         }
 
         // Calculate the required values

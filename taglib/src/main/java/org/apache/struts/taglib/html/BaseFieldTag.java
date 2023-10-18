@@ -79,7 +79,7 @@ public abstract class BaseFieldTag extends BaseInputTag {
     public int doStartTag() throws JspException {
         TagUtils.getInstance().write(this.pageContext, this.renderInputElement());
 
-        return (EVAL_BODY_TAG);
+        return (EVAL_BODY_BUFFERED);
     }
 
     /**
@@ -102,9 +102,21 @@ public abstract class BaseFieldTag extends BaseInputTag {
         prepareValue(results);
         results.append(this.prepareEventHandlers());
         results.append(this.prepareStyles());
-        if (!isXhtml()) {
-            prepareAttribute(results, "autocomplete", getAutocomplete());
+
+        //WebJET - automaticky nastaveny autocomplete na login formoch
+        if (sk.iway.iwcm.Constants.getBoolean("formLoginProtect"))
+        {
+      	  String name = prepareName();
+      	  if (name != null && (name.equals("username") || name.equals("password") || name.equals("email")))
+      	  {
+      		  prepareAttribute(results, "autocomplete", "off");
+      	  }
         }
+
+	     if (!isXhtml()) {
+	            prepareAttribute(results, "autocomplete", getAutocomplete());
+	     }
+
         prepareOtherAttributes(results);
         results.append(this.getElementClose());
 

@@ -1,3 +1,16 @@
+/**
+ * patchnute podla:
+ * https://github.com/tkhanateconsysdotcom/struts1-forever/commit/eda3a79907ed8fcb0387a0496d0cb14332f250e8
+ *
+ * ## Fixed vulnerabilities
+ *
+ * - CVE-2014-0114
+ * - CVE-2016-1181
+ * - CVE-2016-1182
+ *
+ */
+
+
 /*
  * $Id$
  *
@@ -33,6 +46,7 @@ import org.apache.commons.beanutils.converters.FloatConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.ShortConverter;
+import org.apache.commons.beanutils.SuppressPropertiesBeanIntrospector;
 import org.apache.commons.chain.CatalogFactory;
 import org.apache.commons.chain.config.ConfigParser;
 import org.apache.commons.digester.Digester;
@@ -54,7 +68,6 @@ import org.apache.struts.util.MessageResources;
 import org.apache.struts.util.MessageResourcesFactory;
 import org.apache.struts.util.ModuleUtils;
 import org.apache.struts.util.RequestUtils;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javax.servlet.ServletContext;
@@ -72,13 +85,13 @@ import java.math.BigInteger;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.MissingResourceException;
+import java.util.HashSet;
 
 /**
  * <p><strong>ActionServlet</strong> provides the "controller" in the
@@ -1700,6 +1713,19 @@ public class ActionServlet extends HttpServlet {
      */
     protected void initOther()
         throws ServletException {
+
+        {
+            //Fixed CVE-2016-1181 and CVE-2016-1182
+            HashSet suppressProperties = new HashSet();
+            suppressProperties.add("class");
+            suppressProperties.add("multipartRequestHandler");
+            suppressProperties.add("resultValueMap");
+            PropertyUtils.addBeanIntrospector(
+                new SuppressPropertiesBeanIntrospector(suppressProperties)
+            );
+            PropertyUtils.clearDescriptors();
+        }
+
         String value;
 
         value = getServletConfig().getInitParameter("config");

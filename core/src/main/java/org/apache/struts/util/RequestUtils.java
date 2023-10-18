@@ -1,3 +1,13 @@
+/**
+ * patchnute podla:
+ * https://github.com/bingcai/struts-mini/commit/df4da55bc2b0c3c1f4687a61c49458dfbde0e3c3
+ *
+ * CVE-2015-0899
+ * The MultiPageValidator implementation in Apache Struts 1 1.1 through 1.3.10 allows remote attackers to bypass
+ * intended access restrictions via a modified page parameter.
+ *
+ */
+
 /*
  * $Id$
  *
@@ -436,35 +446,48 @@ public class RequestUtils {
             String stripped = name;
 
             if (prefix != null) {
-                if (!stripped.startsWith(prefix)) {
-                    continue;
+                if (stripped.startsWith(prefix)) {
+                    /*
+                        continue;
+                    } */
+
+                    stripped = stripped.substring(prefix.length());
                 }
 
                 stripped = stripped.substring(prefix.length());
             }
 
             if (suffix != null) {
-                if (!stripped.endsWith(suffix)) {
-                    continue;
+                if (stripped.endsWith(suffix)) {
+                    /*
+                        continue;
+                    } */
+                    stripped =
+                        stripped.substring(0, stripped.length() - suffix.length());
+                }
+            }
+
+            /* Fix the issue in defect S1207965.
+            */
+            if (!stripped.startsWith("class.")) {
+                    /* In defect S1207965, we fixed the same issue for struts 1.3.10.
+                    here the fixing is for struts 1.3.8
+                    */
+
+                Object parameterValue = null;
+
+                if (isMultipart) {
+                    parameterValue = multipartParameters.get(name);
+                    parameterValue = rationalizeMultipleFileProperty(bean, name, parameterValue);
+                } else {
+                    parameterValue = request.getParameterValues(name);
                 }
 
-                stripped =
-                    stripped.substring(0, stripped.length() - suffix.length());
-            }
-
-            Object parameterValue = null;
-
-            if (isMultipart) {
-                parameterValue = multipartParameters.get(name);
-                parameterValue = rationalizeMultipleFileProperty(bean, name, parameterValue);
-            } else {
-                parameterValue = request.getParameterValues(name);
-            }
-
-            // Populate parameters, except "standard" struts attributes
-            // such as 'org.apache.struts.action.CANCEL'
-            if (!(stripped.startsWith("org.apache.struts."))) {
-                properties.put(stripped, parameterValue);
+                // Populate parameters, except "standard" struts attributes
+                // such as 'org.apache.struts.action.CANCEL'
+                if (!(stripped.startsWith("org.apache.struts."))) {
+                    properties.put(stripped, parameterValue);
+                }
             }
         }
 
@@ -485,13 +508,13 @@ public class RequestUtils {
     }
 
     /**
-     * <p>If the given form bean can accept multiple FormFile objects but the user only uploaded a single, then 
+     * <p>If the given form bean can accept multiple FormFile objects but the user only uploaded a single, then
      * the property will not match the form bean type.  This method performs some simple checks to try to accommodate
      * that situation.</p>
      * @param bean
      * @param name
      * @param parameterValue
-     * @return 
+     * @return
      * @throws ServletException if the introspection has any errors.
      */
     private static Object rationalizeMultipleFileProperty(Object bean, String name, Object parameterValue) throws ServletException {
